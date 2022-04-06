@@ -12,6 +12,7 @@
 
 #To avoid multiple screen refreshs, the modules usually do not clean-up the display when being deactivvated. Instead, each module is supposed to set at least the area corresponding to each button (even if it needs to be set to white if unused).
 
+
 from inkkeys import *
 import time
 from threading import Timer
@@ -20,7 +21,17 @@ from PIL import Image, ImageDraw, ImageFont
 from colorsys import hsv_to_rgb
 
 #Optional libraries you might want to remove if you do not require them.
-import pulsectl                                  # Get volume level in Linux, pip3 install pulsectl
+#Audio libraries (platform dependent)
+import sys
+if sys.platform in ['linux', 'linux2', 'Mac', 'darwin', 'os2', 'os2emx']:
+    import pulsectl                                  # Get volume level in Linux, pip3 install pulsectl
+elif sys.platform in ['Windows', 'win32', 'cygwin']:
+    from ctypes import cast
+    from comtypes import CLSCTX_ALL
+    from pycaw.pycaw import *                                    # Get volume control in windows, pip3 install pycaw
+else:
+    print("Unknown platform: " + sys.platform)
+#OBS
 from obswebsocket import obsws, requests, events # Control OBS. This requires the websocket plugin in OBS (https://github.com/Palakis/obs-websocket) and the Python library obs-websocket-py (pip3 install obs-websocket-py, https://github.com/Elektordi/obs-websocket-py)
 
 
@@ -280,15 +291,30 @@ class ModeFallback:
         ### The jog wheel can be pressed to switch between three functions: Volume control, mouse wheel, arrow keys left/right ###
 
         def showVolume(n):
-            with pulsectl.Pulse('inkkeys') as pulse:
-                sinkList = pulse.sink_list()
-                name = pulse.server_info().default_sink_name
-                for sink in sinkList:
-                    if sink.name == name:
-                        vol = sink.volume.value_flat
-                off = 0x00ff00
-                on = 0xff0000
-                leds = [on if vol > i/(device.nLeds-1) else off for i in range(device.nLeds)]
+            if sys.platform in ['linux', 'linux2', 'Mac', 'darwin', 'os2', 'os2emx']:
+                with pulsectl.Pulse('inkkeys') as pulse:
+                    sinkList = pulse.sink_list()
+                    name = pulse.server_info().default_sink_name
+                    for sink in sinkList:
+                        if sink.name == name:
+                            vol = sink.volume.value_flat
+                    off = 0xff0000
+                    on = 0x00ff00
+                    leds = [on if vol > i / (device.nLeds - 1) else off for i in range(device.nLeds)]
+                    device.setLeds(leds)
+            elif sys.platform in ['Windows', 'win32', 'cygwin']:
+                # code snipped taken from https://github.com/AndreMiras/pycaw
+                audioDevices = AudioUtilities.GetSpeakers()
+                interface = audioDevices.Activate(
+                    IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
+                volume = cast(interface, POINTER(IAudioEndpointVolume))
+
+                off = 0xff0000
+                on = 0x00ff00
+                # see https://docs.microsoft.com/de-de/windows/win32/api/endpointvolume/nf-endpointvolume-iaudioendpointvolume-getmastervolumelevelscalar
+                vol = volume.GetMasterVolumeLevelScalar()
+
+                leds = [on if vol > i / (device.nLeds - 1) or vol == 1 else off for i in range(device.nLeds)]
                 device.setLeds(leds)
 
         self.jogFunction = ""
