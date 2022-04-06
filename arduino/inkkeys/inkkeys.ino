@@ -26,11 +26,13 @@ Encoder rotary(PIN_ROTA, PIN_ROTB);
 long rotaryPosition = 0;  //Last position to keep track of changes
 
 //Display
-GxEPD2_290 display(/*CS=*/ PIN_CS, /*DC=*/ PIN_DC, /*RST=*/ PIN_RST, /*BUSY=*/ PIN_BUSY);
-// Alternative classes: GxEPD2_290_T94 (V2 of the display), GxEPD2_290_T94_V2 (V2 when partial updates do not work)
+GxEPD2_290_T94_V2 display(/*CS=*/ PIN_CS, /*DC=*/ PIN_DC, /*RST=*/ PIN_RST, /*BUSY=*/ PIN_BUSY);
+// for GxEPD2_290_T94_V2 the GxEPD2 library has to be slightly modified, check https://github.com/Staacks/inkkeys/pull/12#issuecomment-1027641297
+// Alternative classes: GxEPD2_290_T94 (V2 of the display), GxEPD2_290 (original, V1 version of the display)
 
 void initDisplay() {
-  display.init(0, true, 2, false);
+  // 0 for others, 115200 for GxEPD2_290_T94_V2
+  display.init(115200, true, 2, false);
   display.writeScreenBuffer();
   display.refresh();
   display.writeScreenBufferAgain();
